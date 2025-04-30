@@ -1,5 +1,10 @@
 const sharp = require('sharp');
-const fs = require('fs');
+
+const MIME_TYPES = {
+    'image/jpg': 'jpg',
+    'image/jpeg': 'jpg',
+    'image/png': 'png'
+  }
 
 const sharpProcess = async (req, res, next) => {
     if (!req.file) {

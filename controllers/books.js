@@ -1,3 +1,4 @@
+const book = require('../models/book');
 const Book = require('../models/book')
 const fs = require('fs');
 
@@ -47,7 +48,7 @@ exports.deleteBook = (req, res, next) => {
                 const filename = book.imageUrl.split('/images/')[1];
                 fs.unlink(`images/${filename}`, () => {
                     Book.deleteOne({_id: req.params.id})
-                        .then(() => { res.status(200).json({message: 'Livre supprimé !'})})
+                        .then(() => { res.status(204).json({message: 'Livre supprimé !'})})
                         .catch(error => res.status(401).json({ error }));
                 });
             }
@@ -56,6 +57,7 @@ exports.deleteBook = (req, res, next) => {
             res.status(500).json({ error });
         });
 };
+
 
 exports.getOneBook = (req, res, next) => {
     Book.findOne({ _id: req.params.id })
@@ -66,5 +68,33 @@ exports.getOneBook = (req, res, next) => {
 exports.getAllBooks = (req, res, next) => {
     Book.find()
     .then(books => res.status(200).json(books))
+    .catch(error => res.status(400).json({ error }));
+}
+
+exports.addRating = (req, res, next) => {
+    Book.findOne({_id: req.params.id})
+    .then((book) => {
+        if (book.ratings.some(ratings => ratings.userId === req.auth.userId)) {
+            res.status(400).json({ message : 'Vous avez déjà noté ce livre !'});
+        } else {
+            book.ratings.push({
+                userId: req.body.userId,
+                grade: req.body.rating
+            });
+
+            const totalRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
+            book.averageRating = Math.round(totalRatings / book.ratings.length);
+            
+            book.save()
+            .then(ratingAdded => {res.status(200).json(ratingAdded)})
+            .catch(error => {res.status(500).json({ error })});
+        }
+    })
+        .catch(error => {res.status(400).json({ error })});
+};
+
+exports.getBestRatings = (req, res, next) => {
+    Book.find().sort({ averageRating: -1 }).limit(3)
+    .then(bestRatings => res.status(200).json(bestRatings))
     .catch(error => res.status(400).json({ error }));
 }
